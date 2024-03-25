@@ -2,7 +2,7 @@ const fs = require("fs");
 const { REST, Routes } = require("discord.js");
 const config = require("../../config.json");
 const  commands = [];
-const slashCommandsFiles = fs.readdirSync("../comandos").filter((file) => file.endsWith("js"));
+const slashCommandsFiles = fs.readdirSync("./src/comandos").filter((file) => file.endsWith("js"));
 
 
 for (const file of slashCommandsFiles) {
