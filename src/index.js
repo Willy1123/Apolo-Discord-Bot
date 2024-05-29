@@ -1,5 +1,6 @@
 // Requerimientos
 const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const { VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const config = require("../config.json");
 
 // Crea el cliente
