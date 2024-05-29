@@ -1,5 +1,8 @@
 const { SlashCommandBuilder } = require("discord.js");
-const { joinVoiceChannel, createAudioPlayer, NoSubscriberBehavior, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
+const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
+// Importamos la función de manejo de audio
+const { startTranscription } = require('../utils/handleVoice');
+const config = require("../../config.json");
 
 module.exports = {
     // Definimos la estructura del comando
@@ -29,12 +32,27 @@ module.exports = {
                 adapterCreator: channel.guild.voiceAdapterCreator,
             });
 
+            connection.on(VoiceConnectionStatus.Ready, () => {
+                console.log('Conexión lista');
+            });
+
+            // Escucha al usuario
+            const receiver = connection.receiver;
+            receiver.speaking.on('start', (userId) => {
+                console.log(`Usuario ${userId} comenzó a hablar`);
+            });;
+
+            receiver.subscribe(interaction.member.user.id);
+
+            // Llama a la función transcribeAudio
+            startTranscription(audioBuffer, config.GLADIA_API);
+
+
             // Esperar hasta que la conexión esté lista
-            await entersState(connection, VoiceConnectionStatus.Ready, 30e3);
             interaction.reply(`¡Conectado al canal de voz ${channel.name} correctamente!`);
         } catch (error) {
             console.error(error);
-            interaction.reply({ content: 'Hubo un error al intentar conectarse al canal de voz.', ephemeral: true });
+            interaction.reply({ content: "Hubo un error al unirse al canal de voz.", ephemeral: true });
         }
     }
 };
