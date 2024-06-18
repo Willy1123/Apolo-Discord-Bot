@@ -1,9 +1,16 @@
 // Requerimientos
-const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
+const { Client, Collection } = require("discord.js");
 const config = require("../config.json");
+const fs = require("fs");
+
+// Crear el directorio ./recordings si no existe
+const path = './recordings';
+if (!fs.existsSync(path)) {
+    fs.mkdirSync(path);
+}
 
 // Crea el cliente
-const client = new Client({ intents: 3244031 });
+const client = new Client({ intents: 3276799 });
 
 // Se ejecuta cuando se inicia el Bot
 client.on('ready', () => console.log("Estoy listo"));
@@ -11,9 +18,8 @@ client.on('ready', () => console.log("Estoy listo"));
 /**
  * Manejo de slashcommands
  */
-const fs = require("fs");
-let { readdirSync } = require("fs");
 
+//let { readdirSync } = require("fs");
 client.slashCommands = new Collection();
 const slashCommandsFiles = fs
     .readdirSync("./src/comandos")
@@ -35,7 +41,7 @@ client.on("interactionCreate", async (interaction) => {
 
     try {
         await slashCommands.run(client, interaction);
-        console.log("Interaction creada!")
+        console.log("Interaction creada!");
     } catch (e) {
         console.error(e);
         console.log("Error al crear la interaction!");
