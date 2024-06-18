@@ -4,10 +4,12 @@
     "@discordjs/voice": "^0.16.1",
     "axios": "^1.7.2",
     "discord-api-types": "^0.37.76",
-    "discord-player": "^6.6.7",
+    "discord-player": "^6.6.2",
     "discord.js": "^14.14.1",
     "esm": "^3.2.25",
-    "node-fetch": "^3.3.2"
+    "mic": "^2.1.2",
+    "node-fetch": "^3.3.2",
+    "ws": "^8.17.1"
   },
   "name": "apolo",
   "version": "1.0.0",

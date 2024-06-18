@@ -2,6 +2,13 @@
 const { Client, GatewayIntentBits, Partials, Collection } = require("discord.js");
 const { VoiceConnectionStatus, entersState } = require('@discordjs/voice');
 const config = require("../config.json");
+const fs = require("fs");
+
+// Crear el directorio ./recordings si no existe
+const path = './recordings';
+if (!fs.existsSync(path)) {
+    fs.mkdirSync(path);
+}
 
 // Crea el cliente
 const client = new Client({ intents: 3244031 });
@@ -12,9 +19,8 @@ client.on('ready', () => console.log("Estoy listo"));
 /**
  * Manejo de slashcommands
  */
-const fs = require("fs");
-let { readdirSync } = require("fs");
 
+let { readdirSync } = require("fs");
 client.slashCommands = new Collection();
 const slashCommandsFiles = fs
     .readdirSync("./src/comandos")
