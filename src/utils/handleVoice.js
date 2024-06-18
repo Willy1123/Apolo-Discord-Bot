@@ -5,12 +5,11 @@ const ERROR_KEY = "error";
 const TYPE_KEY = "type";
 const TRANSCRIPTION_KEY = "transcription";
 const LANGUAGE_KEY = "language";
-const SAMPLE_RATE = 48000; // Cambiado a 48000 para que coincida con tu configuración
+const SAMPLE_RATE = 48_000;
 
 let socket;
-let microphoneInstance;
 
-function initGladiaConnection(client, channelId) {
+function initGladiaConnection(client, channelId, userName) {
     const gladiaKey = config.GLADIA_API;
     const gladiaUrl = "wss://api.gladia.io/audio/text/audio-transcription";
     socket = new WebSocket(gladiaUrl);
@@ -24,7 +23,8 @@ function initGladiaConnection(client, channelId) {
                     socket.close();
                 } else {
                     if (utterance && utterance[TRANSCRIPTION_KEY]) {
-                        const transcription = `${utterance[TYPE_KEY]}: (${utterance[LANGUAGE_KEY]}) ${utterance[TRANSCRIPTION_KEY]}`;
+                        const transcription = `${userName} (${utterance[LANGUAGE_KEY]}): ${utterance[TRANSCRIPTION_KEY]}`;
+                        
                         console.log(transcription);
 
                         // Publica la transcripción en un canal de texto
@@ -56,9 +56,6 @@ function initGladiaConnection(client, channelId) {
             language_behaviour: "manual",
             language: "spanish",
             sample_rate: SAMPLE_RATE,
-            model_type:"accurate",
-            audio_enhancer: true,
-            encoding: "mp3"
         };
         socket.send(JSON.stringify(configuration));
     });
@@ -66,31 +63,21 @@ function initGladiaConnection(client, channelId) {
     return socket;
 }
 
-function sendDataToGladia(chunkPCM) {
-    if (!socket) return;
+function sendDataToGladia(audioBuffer, userSocket) {
+    const base64 = audioBuffer.toString('base64');
 
-    const base64 = chunkPCM.toString("base64");
-
-    if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ frames: base64 }));
+    if (userSocket.readyState === WebSocket.OPEN) {
+        userSocket.send(JSON.stringify({ frames: base64 }));
     } else {
         console.log("WebSocket no está en estado [ OPEN ]");
     }
 }
 
 function stopTranscription() {
-    if (microphoneInstance) {
-        microphoneInstance.stop();
-        microphoneInstance = null;
-    }
     if (socket) {
         socket.close();
         socket = null;
     }
 }
 
-module.exports = { initGladiaConnection, sendDataToGladia, stopTranscription, setMicrophoneInstance };
-
-function setMicrophoneInstance(micInstance) {
-    microphoneInstance = micInstance;
-}
+module.exports = { initGladiaConnection, sendDataToGladia, stopTranscription };
