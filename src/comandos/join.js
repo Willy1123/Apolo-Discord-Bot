@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { joinVoiceChannel, VoiceConnectionStatus } = require('@discordjs/voice');
-const { transcribeAudio } = require('../utils/handleVoice');
+const { initGladiaConnection, sendDataToGladia, setMicrophoneInstance } = require('../utils/handleVoice');
+const mic = require('mic');
 const config = require("../../config.json");
 
 module.exports = {
@@ -25,7 +26,28 @@ module.exports = {
             connection.on(VoiceConnectionStatus.Ready, () => {
                 console.log('Conexión lista');
                 interaction.reply(`¡Conectado al canal de voz ${channel.name} correctamente!`);
-                transcribeAudio(connection, client, interaction.channel.id);
+
+                // Inicia la conexión con Gladia
+                const socket = initGladiaConnection(client, interaction.channel.id);
+
+                // Crear instancia de micrófono
+                const microphoneInstance = mic({
+                    rate: 48000,
+                    channels: '1',
+                });
+
+                setMicrophoneInstance(microphoneInstance);
+
+                const microphoneInputStream = microphoneInstance.getAudioStream();
+                microphoneInputStream.on('data', function (data) {
+                    sendDataToGladia(data);
+                });
+
+                microphoneInputStream.on('error', function (err) {
+                    console.log("Error en el flujo de entrada: " + err);
+                });
+
+                microphoneInstance.start();
             });
 
             connection.on(VoiceConnectionStatus.Disconnected, () => {

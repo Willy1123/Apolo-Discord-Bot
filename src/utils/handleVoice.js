@@ -1,55 +1,96 @@
-const axios = require('axios');
-const fs = require('fs');
-const { EndBehaviorType } = require('@discordjs/voice');
+const WebSocket = require('ws');
 const config = require("../../config.json");
 
-async function transcribeAudio(audioBuffer, client, channelId) {
-    try {
+const ERROR_KEY = "error";
+const TYPE_KEY = "type";
+const TRANSCRIPTION_KEY = "transcription";
+const LANGUAGE_KEY = "language";
+const SAMPLE_RATE = 48000; // Cambiado a 48000 para que coincida con tu configuración
 
-        const audioBase64 = audioBuffer.toString('base64');
-        const audioUrl = `data:audio/wav;base64,${audioBase64}`;
+let socket;
+let microphoneInstance;
 
-        const response = await axios.post('https://api.gladia.io/v2/transcription', {
-            audio_url: audioUrl,
-            context_prompt: "<string>",
-            custom_vocabulary: ["<string>"],
-            detect_language: true,
-            enable_code_switching: true,
-            code_switching_config: { languages: ["af"] },
-            language: "es",
-            callback_url: "http://callback.example",
-            subtitles: true,
-            subtitles_config: { formats: ["srt"] },
-            diarization: true,
-            diarization_config: { number_of_speakers: 2, min_speakers: 1, max_speakers: 2 },
-            summarization: true,
-            summarization_config: { type: "general" },
-            named_entity_recognition: true,
-            chapterization: true,
-            name_consistency: true,
-            audio_to_llm: true,
-            audio_to_llm_config: { prompts: ["Extract the key points from the transcription"] },
-            sentences: true
-        }, {
-            headers: {
-                'x-gladia-key': config.GLADIA_API, // Tu clave API aquí
-                'Content-Type': 'application/json'
+function initGladiaConnection(client, channelId) {
+    const gladiaKey = config.GLADIA_API;
+    const gladiaUrl = "wss://api.gladia.io/audio/text/audio-transcription";
+    socket = new WebSocket(gladiaUrl);
+
+    socket.on("message", (event) => {
+        if (event) {
+            const utterance = JSON.parse(event.toString());
+            if (Object.keys(utterance).length !== 0) {
+                if (ERROR_KEY in utterance) {
+                    console.error(`${utterance[ERROR_KEY]}`);
+                    socket.close();
+                } else {
+                    if (utterance && utterance[TRANSCRIPTION_KEY]) {
+                        const transcription = `${utterance[TYPE_KEY]}: (${utterance[LANGUAGE_KEY]}) ${utterance[TRANSCRIPTION_KEY]}`;
+                        console.log(transcription);
+
+                        // Publica la transcripción en un canal de texto
+                        const channel = client.channels.cache.get(channelId);
+                        if (channel) {
+                            channel.send(transcription);
+                        } else {
+                            console.error("No se pudo encontrar el canal para enviar la transcripción");
+                        }
+                    }
+                }
             }
-        });
-
-        const transcription = response.data.text;
-        console.log(`Transcripción: ${transcription}`);
-
-        // Publica la transcripción en un canal de texto
-        const channel = client.channels.cache.get(channelId);
-        if (channel) {
-            channel.send(transcription);
         } else {
-            console.error("No se pudo encontrar el canal para enviar la transcripción");
+            console.log("Mensaje vacío...");
         }
-    } catch (error) {
-        console.error("Error al transcribir audio:", error.response ? error.response.data : error.message);
+    });
+
+    socket.on("error", (error) => {
+        console.log("Error en WebSocket:", error.message);
+    });
+
+    socket.on("close", () => {
+        console.log("Conexión cerrada.");
+    });
+
+    socket.on("open", async () => {
+        const configuration = {
+            x_gladia_key: gladiaKey,
+            language_behaviour: "manual",
+            language: "spanish",
+            sample_rate: SAMPLE_RATE,
+            model_type:"accurate",
+            audio_enhancer: true,
+            encoding: "mp3"
+        };
+        socket.send(JSON.stringify(configuration));
+    });
+
+    return socket;
+}
+
+function sendDataToGladia(chunkPCM) {
+    if (!socket) return;
+
+    const base64 = chunkPCM.toString("base64");
+
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ frames: base64 }));
+    } else {
+        console.log("WebSocket no está en estado [ OPEN ]");
     }
 }
 
-module.exports = { transcribeAudio };
+function stopTranscription() {
+    if (microphoneInstance) {
+        microphoneInstance.stop();
+        microphoneInstance = null;
+    }
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+}
+
+module.exports = { initGladiaConnection, sendDataToGladia, stopTranscription, setMicrophoneInstance };
+
+function setMicrophoneInstance(micInstance) {
+    microphoneInstance = micInstance;
+}

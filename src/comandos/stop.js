@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { getVoiceConnection } = require('@discordjs/voice');
+const { stopTranscription } = require('../utils/handleVoice');
 
 module.exports = {
     // Definimos la estructura del comando
@@ -19,7 +20,8 @@ module.exports = {
 
         if (connection) {
             connection.destroy();
-            return interaction.reply({ content: "¡Desconectado del canal de voz!", ephemeral: true });
+            stopTranscription();
+            return interaction.reply({ content: "¡Desconectado del canal de voz y transcripción detenida!", ephemeral: true });
         } else {
             return interaction.reply({ content: "No estoy conectado a ningún canal de voz.", ephemeral: true });
         }
