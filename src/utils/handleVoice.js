@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
 const config = require("../../config.json");
 
 const ERROR_KEY = "error";
@@ -8,6 +10,8 @@ const LANGUAGE_KEY = "language";
 const SAMPLE_RATE = 48_000;
 
 let socket;
+let isListening = false;
+let transcriptBuffer = [];
 
 function initGladiaConnection(client, channelId, userName) {
     const gladiaKey = config.GLADIA_API;
@@ -33,6 +37,10 @@ function initGladiaConnection(client, channelId, userName) {
                             channel.send(transcription);
                         } else {
                             console.error("No se pudo encontrar el canal para enviar la transcripción");
+                        }
+                        // Si está escuchando, almacena la transcripción
+                        if (isListening) {
+                            transcriptBuffer.push(transcription);
                         }
                     }
                 }
@@ -73,6 +81,25 @@ function sendDataToGladia(audioBuffer, userSocket) {
     }
 }
 
+function startListening() {
+    isListening = true;
+    transcriptBuffer = [];
+}
+
+function stopListening() {
+    isListening = false;
+}
+
+function saveTranscript() {
+    const recordingsDir = path.join(__dirname, '../../recordings');
+    if (!fs.existsSync(recordingsDir)) {
+        fs.mkdirSync(recordingsDir);
+    }
+    const filePath = path.join(recordingsDir, 'transcript.txt');
+    fs.writeFileSync(filePath, transcriptBuffer.join('\n'), 'utf8');
+    return filePath;
+}
+
 function stopTranscription() {
     if (socket) {
         socket.close();
@@ -80,4 +107,4 @@ function stopTranscription() {
     }
 }
 
-module.exports = { initGladiaConnection, sendDataToGladia, stopTranscription };
+module.exports = { initGladiaConnection, sendDataToGladia, startListening, stopListening, saveTranscript, stopTranscription };
